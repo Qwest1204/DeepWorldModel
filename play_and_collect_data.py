@@ -2,7 +2,7 @@ import gymnasium as gym
 import pygame
 import numpy as np
 
-def play_car_racing():
+def play_car_racing(save=True):
     # Создаем среду с режимом рендеринга для человека
     env = gym.make("CarRacing-v3", render_mode="human")
 
@@ -62,7 +62,8 @@ def play_car_racing():
         actions.append(action)
         if terminated or truncated:
             print("Эпизод закончен! Сохранение наблюдений Перезапуск...")
-            np.savez_compressed(f"data/car_racing_data_ep_{i}.npz", obs=observations, act=actions)
+            if save == True:
+                np.savez_compressed(f"data/car_racing_data_ep_{i}.npz", obs=observations, act=actions)
             i = i + 1
 
             env.reset()
@@ -71,4 +72,4 @@ def play_car_racing():
     pygame.quit()
 
 if __name__ == "__main__":
-    play_car_racing()
+    play_car_racing(False)
