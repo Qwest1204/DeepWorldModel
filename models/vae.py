@@ -9,23 +9,23 @@ class ResDownBlock(nn.Module):
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channel, out_channel, kernel_size=3, stride=stride, padding=1),
-            nn.BatchNorm2d(out_channel),
-            nn.ReLU()
+            nn.GroupNorm(8, out_channel),
+            nn.LeakyReLU(0.2)
         )
 
         self.conv2 = nn.Sequential(
             nn.Conv2d(out_channel, out_channel, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(out_channel),
+            nn.BatchNorm2d(8, out_channel),
         )
 
         self.shortcut = nn.Identity()
         if stride > 1 or in_channel != out_channel:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_channel, out_channel, kernel_size=1, stride=stride),
-                nn.BatchNorm2d(out_channel)
+                nn.GroupNorm(8, out_channel)
             )
 
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU(0.2)
 
     def forward(self, x):
         residual = self.shortcut(x)
@@ -43,24 +43,22 @@ class ResUpBlock(nn.Module):
 
         self.conv1 = nn.Sequential(
             nn.ConvTranspose2d(in_channel, out_channel, kernel_size=3, stride=stride, padding=1, output_padding=(1 if stride > 1 else 0)),
-            nn.BatchNorm2d(out_channel),
-            nn.ReLU()
+            nn.GroupNorm(8, out_channel),
+            nn.LeakyReLU(0.2)
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(out_channel, out_channel, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(out_channel),
+            nn.GroupNorm(8, out_channel),
         )
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU(0.2)
 
         self.shortcut = nn.Identity()
         if stride > 1 or in_channel != out_channel:
             self.shortcut = nn.Sequential(
                 nn.ConvTranspose2d(in_channel, out_channel, kernel_size=1, stride=stride,
                                    output_padding=(1 if stride > 1 else 0)),
-                nn.BatchNorm2d(out_channel)
+                nn.GroupNorm(8, out_channel)
             )
-
-        self.relu = nn.ReLU()
 
     def forward(self, x):
         residual = self.shortcut(x)
@@ -104,19 +102,22 @@ class ResVAE(nn.Module):
 
         self.hid_2mu = nn.Sequential(
             nn.Linear(self.num_features, hidden_dim),
+            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, z_diz),
         )
         self.hid_2log_var = nn.Sequential(
             nn.Linear(self.num_features, hidden_dim),
+            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, z_diz),
         )
 
         self.z_2hid = nn.Sequential(
             nn.Linear(z_diz, hidden_dim),
+            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, self.num_features),
         )
 
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU(0.2)
 
     def encode(self, x):
         x = self.relu(self.encoder(x))
@@ -129,7 +130,7 @@ class ResVAE(nn.Module):
     def decode(self, z):
         h = self.relu(self.z_2hid(z))
         x = h.reshape(-1, self.enc_out_shape[1], self.enc_out_shape[2], self.enc_out_shape[3])
-        return torch.sigmoid(self.decoder(x)).reshape((-1, self.channels, self.image_size, self.image_size))
+        return torch.tanh(self.decoder(x)).reshape((-1, self.channels, self.image_size, self.image_size))
 
     def forward(self, x):
         mu, log_var = self.encode(x)
