@@ -16,7 +16,7 @@ IMG_SIZE = 96
 
 # Model parameters
 IN_CHANNELS = 3
-HIDDEN_DIM = 512
+HIDDEN_DIM = 256
 Z_DIM = 128
 
 # Training parameters
