@@ -72,39 +72,7 @@ class ResUpBlock(nn.Module):
         out = self.relu(out)
         return out
 
-class VAE(nn.Module):
-    def __init__(self, channels, image_siae, hidden_dim=200, z_diz=20):
-        super().__init__()
-        self.image_size = image_siae
-        self.channels = channels
-        input_dim = image_siae*image_siae*channels
 
-        self.img_2hid = nn.Linear(input_dim, hidden_dim)
-        self.hid_2mu = nn.Linear(hidden_dim, z_diz)
-        self.hid_2sigma = nn.Linear(hidden_dim, z_diz)
-
-        self.z_2hid = nn.Linear(z_diz, hidden_dim)
-        self.hid_2img = nn.Linear(hidden_dim, input_dim)
-
-        self.relu = nn.ReLU()
-
-    def encode(self, x):
-        x = x.flatten(1)
-        h = self.relu(self.img_2hid(x))
-
-        mu, sigma = self.hid_2mu(h), self.hid_2sigma(h)
-
-        return mu, sigma
-    def decode(self, z):
-        h = self.relu(self.z_2hid(z))
-        return torch.sigmoid(self.hid_2img(h)).reshape((-1, self.channels, self.image_size, self.image_size))
-
-    def forward(self, x):
-        mu, sigma = self.encode(x)
-        epsilone = torch.randn_like(sigma)
-        z_perametrized = mu +sigma*epsilone
-        x_recon = self.decode(z_perametrized)
-        return x_recon, mu, sigma
 
 class ResVAE(nn.Module):
     def __init__(self, channels, image_size, hidden_dim=200, z_diz=20):
@@ -117,13 +85,9 @@ class ResVAE(nn.Module):
             ResDownBlock(32, 64, stride=2),
             ResDownBlock(64, 128, stride=2),
             ResDownBlock(128, 256, stride=1),
-            ResDownBlock(256, 512, stride=2),
-            ResDownBlock(512, 1024, stride=2),
         )
 
         self.decoder = nn.Sequential(
-            ResUpBlock(1024, 512, stride=2),
-            ResUpBlock(512, 256, stride=2),
             ResUpBlock(256, 128, stride=1),
             ResUpBlock(128, 64, stride=2),
             ResUpBlock(64, 32, stride=2),

@@ -84,7 +84,7 @@ def main():
     ).to(device)
 
     optimizer = optim.Adam(resvae.parameters(), lr=LEARNING_RATE)
-    loss_fn = nn.MSELoss(reduction='sum')
+    loss_fn = nn.MSELoss(reduction='mean')
 
     start_epoch = 0
     if RESUME_PATH:
