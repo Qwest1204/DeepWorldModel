@@ -80,7 +80,7 @@ def main():
         IN_CHANNELS,
         IMG_SIZE,
         hidden_dim=HIDDEN_DIM,
-        z_diz=Z_DIM
+        z_dim=Z_DIM
     ).to(device)
 
     optimizer = optim.Adam(resvae.parameters(), lr=LEARNING_RATE)
