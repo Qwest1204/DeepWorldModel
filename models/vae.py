@@ -7,10 +7,9 @@ class ResDownBlock(nn.Module):
     def __init__(self, in_channel, out_channel, stride=1):
         super().__init__()
 
-        # Используем LeakyReLU для лучшего градиентного потока
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channel, out_channel, kernel_size=3, stride=stride, padding=1),
-            nn.GroupNorm(8, out_channel),  # GroupNorm лучше для VAE
+            nn.GroupNorm(8, out_channel),
             nn.LeakyReLU(0.2)
         )
 
@@ -40,7 +39,6 @@ class ResUpBlock(nn.Module):
     def __init__(self, in_channel, out_channel, stride=2):
         super().__init__()
 
-        # Используем Upsample + Conv вместо ConvTranspose (меньше артефактов)
         if stride > 1:
             self.upsample = nn.Sequential(
                 nn.Upsample(scale_factor=stride, mode='bilinear', align_corners=False),
@@ -80,55 +78,76 @@ class ResUpBlock(nn.Module):
 
 
 class ResVAE(nn.Module):
-    def __init__(self, channels, image_size, hidden_dim=512, z_dim=256):
+    def __init__(self, channels, image_size, hidden_dim=256, z_dim=32):
         super().__init__()
         self.channels = channels
         self.image_size = image_size
         self.z_dim = z_dim
 
-        # Encoder - меньше даунсемплинга для сохранения деталей
+        # Encoder
         self.encoder = nn.Sequential(
-            ResDownBlock(channels, 64, stride=2),  # 96 -> 48
-            ResDownBlock(64, 128, stride=2),  # 48 -> 24
-            ResDownBlock(128, 256, stride=2),  # 24 -> 12
-            ResDownBlock(256, 512, stride=2),  # 12 -> 6
-        )
-
-        # Decoder - симметричный
-        self.decoder_conv = nn.Sequential(
-            ResUpBlock(512, 256, stride=2),  # 6 -> 12
-            ResUpBlock(256, 128, stride=2),  # 12 -> 24
-            ResUpBlock(128, 64, stride=2),  # 24 -> 48
-            ResUpBlock(64, 32, stride=2),  # 48 -> 96
-        )
-
-        # Финальный слой без sigmoid (используем Tanh или ничего)
-        self.final_conv = nn.Sequential(
-            nn.Conv2d(32, 32, kernel_size=3, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(32, channels, kernel_size=3, padding=1),
-            nn.Sigmoid()  # Данные должны быть в [-1, 1]
+            ResDownBlock(channels, 32, stride=2),  # 96 -> 48
+            ResDownBlock(32, 64, stride=2),  # 48 -> 24
+            ResDownBlock(64, 128, stride=2),  # 24 -> 12
+            ResDownBlock(128, 256, stride=2),  # 12 -> 6
         )
 
         # Вычисляем размер после encoder
         with torch.no_grad():
             dummy = torch.zeros(1, channels, image_size, image_size)
             enc_out = self.encoder(dummy)
-            self.enc_shape = enc_out.shape[1:]  # (C, H, W)
-            self.flat_size = enc_out.flatten(1).shape[1]
+            self.enc_shape = enc_out.shape[1:]  # (256, 6, 6)
+            self.flat_size = enc_out.flatten(1).shape[1]  # 256 * 6 * 6 = 9216
 
-        # Проекции для mu и log_var
-        self.fc_mu = nn.Linear(self.flat_size, z_dim)
-        self.fc_logvar = nn.Linear(self.flat_size, z_dim)
+        # Bottleneck - добавляем дополнительное сжатие
+        self.pre_latent = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.flat_size, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.2),
+        )
 
-        # Проекция обратно
-        self.fc_decode = nn.Linear(z_dim, self.flat_size)
+        # Mu и log_var
+        self.fc_mu = nn.Linear(hidden_dim, z_dim)
+        self.fc_logvar = nn.Linear(hidden_dim, z_dim)
+
+        # Инициализация для более стабильного latent space
+        nn.init.xavier_uniform_(self.fc_mu.weight, gain=0.1)
+        nn.init.zeros_(self.fc_mu.bias)
+        nn.init.xavier_uniform_(self.fc_logvar.weight, gain=0.1)
+        nn.init.constant_(self.fc_logvar.bias, -2.0)  # Начинаем с маленького std
+
+        # Decoder projection
+        self.fc_decode = nn.Sequential(
+            nn.Linear(z_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, self.flat_size),
+            nn.LeakyReLU(0.2),
+        )
+
+        # Decoder conv
+        self.decoder_conv = nn.Sequential(
+            ResUpBlock(256, 128, stride=2),  # 6 -> 12
+            ResUpBlock(128, 64, stride=2),  # 12 -> 24
+            ResUpBlock(64, 32, stride=2),  # 24 -> 48
+            ResUpBlock(32, 32, stride=2),  # 48 -> 96
+        )
+
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(32, channels, kernel_size=3, padding=1),
+            nn.Sigmoid()
+        )
 
     def encode(self, x):
         h = self.encoder(x)
-        h_flat = h.flatten(1)
-        mu = self.fc_mu(h_flat)
-        log_var = self.fc_logvar(h_flat)
+        h = self.pre_latent(h)
+        mu = self.fc_mu(h)
+        log_var = self.fc_logvar(h)
+        # Ограничиваем log_var для стабильности
+        log_var = torch.clamp(log_var, min=-10, max=2)
         return mu, log_var
 
     def reparameterize(self, mu, log_var):
@@ -147,3 +166,8 @@ class ResVAE(nn.Module):
         z = self.reparameterize(mu, log_var)
         x_recon = self.decode(z)
         return x_recon, mu, log_var
+
+    def sample(self, n_samples, device):
+        """Генерация новых изображений из prior"""
+        z = torch.randn(n_samples, self.z_dim, device=device)
+        return self.decode(z)
