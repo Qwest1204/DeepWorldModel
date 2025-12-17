@@ -107,7 +107,7 @@ class ResVAE(nn.Module):
             nn.Conv2d(32, 32, kernel_size=3, padding=1),
             nn.LeakyReLU(0.2),
             nn.Conv2d(32, channels, kernel_size=3, padding=1),
-            nn.Tanh()  # Данные должны быть в [-1, 1]
+            nn.Sigmoid()  # Данные должны быть в [-1, 1]
         )
 
         # Вычисляем размер после encoder

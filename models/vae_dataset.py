@@ -40,5 +40,4 @@ class VAENpDataset(Dataset):
         obs = self.data[idx]
         image_obs = Image.fromarray(obs)
         image_obs = self.transform(image_obs)
-        image_obs = image_obs*2-1
         return image_obs
