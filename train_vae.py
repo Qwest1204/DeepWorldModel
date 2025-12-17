@@ -16,12 +16,12 @@ IMG_SIZE = 96
 
 # Model parameters
 IN_CHANNELS = 3
-HIDDEN_DIM = 1024
-Z_DIM = 256
+HIDDEN_DIM = 512
+Z_DIM = 128
 
 # Training parameters
 BATCH_SIZE = 16
-EPOCHS = 100
+EPOCHS = 20
 LEARNING_RATE = 0.0001
 BETA = 0.0001
 
