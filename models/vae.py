@@ -116,7 +116,7 @@ class ResVAE(nn.Module):
             ResDownBlock(channels, 32, stride=2),
             ResDownBlock(32, 64, stride=2),
             ResDownBlock(64, 128, stride=2),
-            ResDownBlock(128, 256, stride=2),
+            ResDownBlock(128, 256, stride=1),
             ResDownBlock(256, 512, stride=2),
             ResDownBlock(512, hidden_dim, stride=2),
         )
@@ -124,7 +124,7 @@ class ResVAE(nn.Module):
         self.decoder = nn.Sequential(
             ResUpBlock(hidden_dim, 512, stride=2),
             ResUpBlock(512, 256, stride=2),
-            ResUpBlock(256, 128, stride=2),
+            ResUpBlock(256, 128, stride=1),
             ResUpBlock(128, 64, stride=2),
             ResUpBlock(64, 32, stride=2),
             ResUpBlock(32, channels, stride=2),
