@@ -118,11 +118,11 @@ class ResVAE(nn.Module):
             ResDownBlock(64, 128, stride=2),
             ResDownBlock(128, 256, stride=1),
             ResDownBlock(256, 512, stride=2),
-            ResDownBlock(512, hidden_dim, stride=2),
+            ResDownBlock(512, 1024, stride=2),
         )
 
         self.decoder = nn.Sequential(
-            ResUpBlock(hidden_dim, 512, stride=2),
+            ResUpBlock(1024, 512, stride=2),
             ResUpBlock(512, 256, stride=2),
             ResUpBlock(256, 128, stride=1),
             ResUpBlock(128, 64, stride=2),
@@ -138,10 +138,19 @@ class ResVAE(nn.Module):
 
         self.num_features = dummy_output.flatten(1).shape[1]
 
-        self.hid_2mu = nn.Linear(self.num_features, z_diz)
-        self.hid_2log_var = nn.Linear(self.num_features, z_diz)
+        self.hid_2mu = nn.Sequential(
+            nn.Linear(self.num_features, hidden_dim),
+            nn.Linear(hidden_dim, z_diz),
+        )
+        self.hid_2log_var = nn.Sequential(
+            nn.Linear(self.num_features, hidden_dim),
+            nn.Linear(hidden_dim, z_diz),
+        )
 
-        self.z_2hid = nn.Linear(z_diz, self.num_features)
+        self.z_2hid = nn.Sequential(
+            nn.Linear(z_diz, hidden_dim),
+            nn.Linear(hidden_dim, self.num_features),
+        )
 
         self.relu = nn.ReLU()
 
