@@ -17,13 +17,13 @@ IMG_SIZE = 96
 # Model parameters
 IN_CHANNELS = 3
 HIDDEN_DIM = 256
-Z_DIM = 128
+Z_DIM = 32
 
 # Training parameters
 BATCH_SIZE = 16
 EPOCHS = 20
 LEARNING_RATE = 0.0001
-BETA = 0.0001
+BETA = 0.5
 
 # Checkpoint parameters
 CHECKPOINT_DIR = 'checkpoints'
@@ -103,7 +103,7 @@ def main():
             x_recon, mu, log_var = resvae(x)
 
             rec_loss = loss_fn(x_recon, x)
-            kl_div = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+            kl_div = -0.5 * torch.mean(torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1))
 
             loss = rec_loss + (kl_div * BETA)
 
