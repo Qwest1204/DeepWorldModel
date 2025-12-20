@@ -17,13 +17,13 @@ class ResVAE(nn.Module):
     def __init__(self, image_channels, hidden_dim=1024, z_dim=32):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(image_channels, 32, kernel_size=4, stride=2),
+            nn.Conv2d(image_channels, 32, kernel_size=4, stride=2), #96 -> 47
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2), #47 -> 22
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2),
+            nn.Conv2d(64, 128, kernel_size=4, stride=2), #22 -> 10
             nn.ReLU(),
-            nn.Conv2d(128, 256, kernel_size=4, stride=2),
+            nn.Conv2d(128, 256, kernel_size=4, stride=2), #10 -> 4
             nn.ReLU(),
             Flatten(),
         )
@@ -33,14 +33,16 @@ class ResVAE(nn.Module):
         self.fc3 = nn.Linear(z_dim, hidden_dim)
 
         self.decoder = nn.Sequential(
-            UnFlatten(),
-            nn.ConvTranspose2d(hidden_dim, 128, kernel_size=5, stride=2),
+            UnFlatten(size=hidden_dim),
+            nn.ConvTranspose2d(hidden_dim, 256, kernel_size=4, stride=2), #1 -> 4
             nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2),
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2), #4 -> 10
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=6, stride=2),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2), #10 -> 22
             nn.ReLU(),
-            nn.ConvTranspose2d(32, image_channels, kernel_size=6, stride=2),
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2), #22 -> 46
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, image_channels, kernel_size=6, stride=2),  # 46 -> 96
             nn.Sigmoid()
         )
 
