@@ -54,7 +54,7 @@ def play_car_racing(save=True):
 
         # 4. Шаг в среде
         # next_obs - картинка (пиксели)
-        # reward - награда
+        # reward - наград
         # terminated - игра окончена (вылетел или проехал)
         # truncated - время вышло
         next_obs, reward, terminated, truncated, info = env.step(action)
@@ -63,7 +63,7 @@ def play_car_racing(save=True):
         if terminated or truncated:
             print("Эпизод закончен! Сохранение наблюдений Перезапуск...")
             if save == True:
-                np.savez_compressed(f"data/car_racing_data_ep_{i}.npz", obs=observations, act=actions)
+                np.savez_compressed(f"data/car_racing_data_ep_{i+7}.npz", obs=observations, act=actions)
             i = i + 1
 
             env.reset()
@@ -72,4 +72,4 @@ def play_car_racing(save=True):
     pygame.quit()
 
 if __name__ == "__main__":
-    play_car_racing(False)
+    play_car_racing(True)
