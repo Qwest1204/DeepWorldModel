@@ -9,7 +9,7 @@ class Flatten(nn.Module):
 
 
 class UnFlatten(nn.Module):
-    def forward(self, input, size=1024):
+    def forward(self, input, size=4096):
         return input.view(input.size(0), size, 1, -1)
 
 
@@ -33,7 +33,7 @@ class ResVAE(nn.Module):
         self.fc3 = nn.Linear(z_dim, hidden_dim)
 
         self.decoder = nn.Sequential(
-            UnFlatten(size=hidden_dim),
+            UnFlatten(),
             nn.ConvTranspose2d(hidden_dim, 256, kernel_size=4, stride=2), #1 -> 4
             nn.ReLU(),
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2), #4 -> 10
