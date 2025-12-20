@@ -49,7 +49,7 @@ class ResVAE(nn.Module):
     def reparameterize(self, mu, log_var):
         std = log_var.mul(0.5).exp_()
         esp = torch.randn(*mu.size())
-        z = mu + std * esp
+        z = mu + std * esp.to(std.device)
         return z
 
     def bottleneck(self, h):
